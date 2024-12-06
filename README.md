@@ -1,6 +1,8 @@
 # unsupervised_disaster
 Trabalho final referente à disciplina de Aprendizado de Máquina Não Supervisionado do Bacharelado em Inteligência Artificial.
 
+# Dados
+https://drive.google.com/file/d/1on4_cbLyDDS3sXyllwpk7qzVwoZQg3kJ/view?usp=sharing
 
 # Introdução
 
