@@ -20,31 +20,32 @@ https://drive.google.com/file/d/1on4_cbLyDDS3sXyllwpk7qzVwoZQg3kJ/view?usp=shari
 
 ## Classificação com Rede Neural
 
-Para a construção da baseline do classificador, utilizamos uma arquitetura baseada na ResNet, implementada manualmente para garantir flexibilidade e personalização ao projeto. Essa rede foi desenvolvida com base em blocos residuais, uma abordagem amplamente utilizada e bem-sucedida para lidar com problemas de degradação em redes profundas.
+Para a construção da baseline do classificador, utilizamos uma arquitetura baseada na ResNet, implementada manualmente para garantir flexibilidade e personalização ao projeto.
 
 ### Estrutura da Baseline
 Nossa implementação consiste nos seguintes componentes principais:
 
 1. **Bloco Residual (ResidualBlock)**:
     - Cada bloco residual possui duas camadas convolucionais seguidas por normalização em lote (*Batch Normalization*) e ativação ReLU.
-    - Para permitir que os gradientes fluam mais facilmente durante o treinamento, utilizamos atalhos (skip connections) que adicionam diretamente a entrada do bloco à saída convolucional. Quando há diferenças de dimensões entre a entrada e a saída, um atalho ajusta essas dimensões utilizando uma convolução de 1x1.
+    - Conforme a teoria lançada pela ResNet, implementamos atalhos (skip connections) que adicionam diretamente a entrada do bloco à saída convolucional, na ideia de evitar o desaparecimento do gradiente ao longo das layers. Quando há diferenças de dimensões entre a entrada e a saída, utilizamos uma Conv2d 1x1 para ajustá-las corretamente.
 
 2. **Camadas da ResNet**:
-    - A rede começa com uma camada convolucional inicial que aumenta a profundidade das imagens para 64 canais, seguida por uma normalização em lote, uma ativação ReLU e uma camada de *max pooling* para reduzir as dimensões espaciais.
-    - Quatro blocos residuais consecutivos são utilizados, com o número de filtros aumentando progressivamente (64, 128, 128 e 256 canais). Para aumentar a hierarquia da abstração das características, a redução das dimensões espaciais é realizada utilizando *stride* em alguns blocos.
+    - A rede começa com uma camada convolucional inicial que aumenta a profundidade das imagens para 64 canais, seguida por uma Batch Normalization, uma ReLU e uma camada de max pooling para reduzir as dimensões espaciais.
+    - Quatro blocos residuais consecutivos são utilizados, com o número de map features aumentando progressivamente (64, 128, 128 e 256 canais). Com excessão do primeiro bloco, os seguintes utilizam "stride=2" para realizar a redução de dimensionalidade conforme as ativações passam pelas layers.
 
 3. **Camadas Finais**:
-    - Após os blocos residuais, uma camada de *global average pooling* reduz a saída para um único vetor de características por canal.
-    - A saída é então passada por uma camada totalmente conectada (*fully connected layer*), que produz a classificação final.
+    - Após os blocos residuais, uma camada de global average pooling reduz a saída para um único vetor de características por canal.
+    - A saída é então passada por uma MLP, que produz a classificação final.
 
 ### Motivação da Escolha da ResNet
-A ResNet foi escolhida devido à sua robustez e capacidade de treinar redes profundas sem sofrer com o problema de vanishing gradients, graças ao uso de conexões residuais. Essa abordagem é particularmente importante em tarefas de classificação onde os padrões relevantes podem ser complexos e demandar redes profundas para sua detecção.
 
-A baseline servirá como ponto de partida para avaliações futuras e será comparada a outras abordagens, incluindo aquelas que utilizam técnicas de *data augmentation* com imagens geradas.
+A ResNet foi escolhida devido a implementação de blocos residuais, que ainda fazem parte de arquiteturas amplamente utilizadas nas redes mais modernas de visão computacional, uma vez que conseguiram mitigar muito bem o problema de desaparecimento de gradiente. Além disso, a arquitetura da rede é robusta por si só e, por isso, tentamos aplicar o mais fiel possível à implementação original, mas adaptada ao nosso poder computacional e particularidades do nosso problema.
+
+O intuito da baseline é gerar métricas iniciais em relação ao nosso problema para, posteriormente, podermos comparar o impacto da geração de imagens como data augumentation.
 
 ## Data Augmentation com Stable Diffusion
 
-Para aumentar a quantidade e a variabilidade de dados no nosso dataset, utilizamos técnicas de geração de imagens baseadas no Stable Diffusion, um modelo de difusão conhecido por sua capacidade de gerar imagens de alta qualidade a partir de descrições textuais (*prompts*).
+Para aumentar a quantidade e a variabilidade de dados no nosso dataset, utilizamos técnicas de geração de imagens baseadas no Stable Diffusion, um modelo de difusão conhecido por sua capacidade de gerar imagens de alta qualidade a partir de descrições textuais (prompts).
 
 ### Experimentos Iniciais
 Inicialmente, testamos diversos modelos de Stable Diffusion com o objetivo de gerar imagens representativas dos cenários de desastres naturais necessários. Como esperado, não foi possível obter resultados satisfatórios apenas utilizando *prompts* genéricos. Entretanto, experimentos com diferentes modelos e ajustes nos *prompts* geraram imagens que eram próximas do necessário, mas ainda não plenamente adequadas. Assim, identificamos a necessidade de realizar um ajuste fino no modelo.
@@ -53,18 +54,18 @@ Inicialmente, testamos diversos modelos de Stable Diffusion com o objetivo de ge
 Devido às limitações de poder computacional e à escassez de dados disponíveis, optamos por utilizar a técnica de *Textual Inversion*. Segundo Gal et al. (2022), essa abordagem é uma solução eficiente para ajustar modelos de difusão pré-treinados, permitindo gerar imagens específicas sem a necessidade de re-treinar o modelo completo.
 
 #### Funcionamento
-- A técnica consiste em otimizar novos *embeddings* textuais para que representem conceitos específicos baseados em um pequeno conjunto de imagens (geralmente 3-5). Esses *embeddings* são inseridos no espaço de palavras do modelo, permitindo que novos conceitos sejam combinados com *prompts* existentes.
-- O modelo aprende a associar o conceito com um *pseudo-word*, que pode ser utilizado para gerar imagens específicas e ajustadas às nossas necessidades.
+- A técnica consiste em otimizar novos embeddings textuais para que representem conceitos específicos baseados em um pequeno conjunto de imagens (geralmente 3-5). Esses embeddings são inseridos no espaço de palavras do modelo, permitindo que novos conceitos sejam combinados com prompts existentes.
+- O modelo aprende a associar o conceito com um pseudo-word, que pode ser utilizado para gerar imagens específicas e ajustadas às nossas necessidades.
 
 ### Resultados
-Nossa hipótese inicial era que, com um ajuste fino eficiente, seria possível adaptar o modelo para gerar imagens representativas. Os resultados confirmaram essa hipótese, demonstrando que o *Textual Inversion* é uma abordagem viável para enriquecer datasets em cenários de baixa disponibilidade de dados&#8203;:contentReference[oaicite:1]{index=1}.
+Nossa hipótese inicial era que, com um ajuste fino eficiente, seria possível adaptar o modelo para gerar imagens representativas. Os resultados confirmaram essa hipótese, demonstrando que o Textual Inversion é uma abordagem viável para enriquecer datasets em cenários de baixa disponibilidade de dados.
 
 ### Relevância e Embasamento
-A escolha do *Textual Inversion* é suportada pelos benefícios claros de eficiência computacional e pela alta fidelidade de representação dos conceitos&#8203;:contentReference[oaicite:2]{index=2}&#8203;:contentReference[oaicite:3]{index=3}. Além disso, sua integração no pipeline de *data augmentation* se alinha com os objetivos do projeto ao possibilitar a criação de imagens específicas para cenários de desastres naturais.
+A escolha do Textual Inversion é suportada pelos benefícios claros de eficiência computacional e pela alta fidelidade de representação dos conceitos. Além disso, sua integração no pipeline de data augmentation se alinha com os objetivos do projeto ao possibilitar a criação de imagens específicas para cenários de desastres naturais.
 
 ## Classificação utilizando imagens geradas
 
 Após a etapa de geração de imagens, utilizamos as imagens geradas para treinar classificadores adicionais, avaliando seu impacto na performance geral dos modelos.
 
 # Conclusões
-O trabalho mostrou que a integração de abordagens de *data augmentation* com técnicas de difusão, como o *Textual Inversion*, pode ser uma solução eficaz para enriquecer datasets escassos, melhorando a performance em tarefas de classificação de desastres naturais.
+O trabalho mostrou que a integração de abordagens de data augmentation com técnicas de difusão, como o Textual Inversion, pode ser uma solução eficaz para enriquecer datasets escassos, melhorando a performance em tarefas de classificação de desastres naturais.
